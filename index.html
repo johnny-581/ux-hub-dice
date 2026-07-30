@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' file: data:;"
+    />
+    <title>Name picker</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body data-state="idle">
+    <div id="stage">
+      <div id="well">
+        <div id="shape"><div id="shapeInner"></div></div>
+
+        <div id="name"></div>
+
+        <button id="pick" class="btn" type="button">
+          <span>pick</span>
+          <svg class="rule" viewBox="0 0 100 12" aria-hidden="true">
+            <path d="M 4 7 C 24 3.5, 48 9.5, 72 5 C 82 3.4, 90 5.5, 96 6.8" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="shapes.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

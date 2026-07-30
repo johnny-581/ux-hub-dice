@@ -1,0 +1,15 @@
+# Dependencies — Electron alone is ~309M
+node_modules/
+
+# electron-builder output
+dist/
+out/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# macOS
+.DS_Store
+.AppleDouble

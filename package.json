@@ -1,0 +1,13 @@
+{
+  "name": "ux-hub-dice",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Floating hand-drawn random name picker that survives fullscreen presentations",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^43.2.0"
+  }
+}

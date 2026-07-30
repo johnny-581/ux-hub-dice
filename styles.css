@@ -1,0 +1,217 @@
+:root {
+  --ink: #1a1a1a;
+  --hand: 'Bradley Hand', 'Noteworthy', 'Chalkboard SE', ui-rounded, system-ui, sans-serif;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  background: transparent; /* the window is invisible; only ink shows */
+  overflow: hidden;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Nothing is clickable except the buttons — the rest of the window has to let
+   clicks fall through to the slides behind it. */
+body {
+  pointer-events: none;
+}
+
+/* Live ink: clickable where it's a button, grabbable everywhere. Hidden
+   elements get no events for free via visibility: hidden. */
+.btn,
+#name,
+#shape {
+  pointer-events: auto;
+}
+
+/* The name is the re-roll control, so it reads as clickable. The shape is
+   drag-only. Both can be grabbed to move the widget. */
+#name {
+  cursor: pointer;
+}
+
+#shape {
+  cursor: grab;
+}
+
+body.dragging,
+body.dragging * {
+  cursor: grabbing !important;
+}
+
+#stage {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+#well {
+  position: relative;
+  width: 300px;
+  height: 200px;
+}
+
+#shape,
+#name,
+#pick {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Matches the 1004×790 canvas the frames were exported at. The box is the
+   whole canvas, not the shape, so each frame keeps the position it was drawn
+   in and the flipbook doesn't jump. */
+#shape {
+  width: 220px;
+  height: 173px;
+}
+
+#shapeInner {
+  width: 100%;
+  height: 100%;
+  /* Per-frame jitter, set from app.js. Keeps successive frames from looking
+     mechanically identical — and will make real PNGs sit better too. */
+  --jx: 0px;
+  --jy: 0px;
+  --jr: 0deg;
+  transform: translate(var(--jx), var(--jy)) rotate(var(--jr));
+}
+
+#shapeInner.settle {
+  animation: settle 260ms cubic-bezier(0.22, 0.8, 0.3, 1) both;
+}
+
+/* The landing bounce. This single detail is the difference between "a shape
+   landed" and "an image changed". */
+@keyframes settle {
+  0% {
+    transform: translate(var(--jx), var(--jy)) rotate(var(--jr)) scale(1);
+  }
+  38% {
+    transform: translate(var(--jx), var(--jy)) rotate(calc(var(--jr) - 3deg)) scale(1.08);
+  }
+  72% {
+    transform: translate(var(--jx), var(--jy)) rotate(calc(var(--jr) + 1.5deg)) scale(0.97);
+  }
+  100% {
+    transform: translate(var(--jx), var(--jy)) rotate(var(--jr)) scale(1);
+  }
+}
+
+.ink {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  /* No glow — the painted frames stand on their own. The halo stays on the
+     name, which is thin black ink and does need it. */
+  /* Otherwise grabbing the art starts a native image drag instead of moving
+     the widget. */
+  -webkit-user-drag: none;
+}
+
+#name {
+  font-family: var(--hand);
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  letter-spacing: 0.01em;
+  text-shadow: 0 0 3px #fff, 0 0 6px #fff, 0 0 11px #fff,
+    0 0 18px rgba(255, 255, 255, 0.75);
+}
+
+.btn {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--hand);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--ink);
+  text-shadow: 0 0 3px #fff, 0 0 6px #fff, 0 0 10px #fff,
+    0 0 16px rgba(255, 255, 255, 0.7);
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+#pick:hover {
+  transform: translate(-50%, calc(-50% - 1px));
+}
+
+.btn .rule {
+  width: 76%;
+  height: 9px;
+  overflow: visible;
+  filter: drop-shadow(0 0 8px #fff);
+}
+
+.btn .rule path {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+}
+
+/* --- state machine ------------------------------------------------------- */
+
+#shape,
+#name,
+#pick {
+  opacity: 0;
+  visibility: hidden;
+}
+
+#shape {
+  transition: opacity 0.24s ease;
+}
+
+#name {
+  transform: translate(-50%, calc(-50% + 6px));
+  transition: opacity 0.26s ease, transform 0.32s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+body[data-state='idle'] #pick,
+body[data-state='rolling'] #shape,
+body[data-state='settling'] #shape,
+body[data-state='result'] #name {
+  opacity: 1;
+  visibility: visible;
+}
+
+body[data-state='result'] #name {
+  transform: translate(-50%, -50%);
+}
+
+body[data-state='result'] #name:hover {
+  transform: translate(-50%, calc(-50% - 1px));
+}
+
+/* The shape doesn't just vanish — it shrinks slightly as it goes. */
+body[data-state='result'] #shape {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.92);
+}
