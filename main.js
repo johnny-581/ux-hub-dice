@@ -1,10 +1,20 @@
 const fs = require('fs');
 const path = require('path');
-const { app, BrowserWindow, globalShortcut, ipcMain, screen } = require('electron');
+const {
+  app,
+  BrowserWindow,
+  Menu,
+  Tray,
+  globalShortcut,
+  ipcMain,
+  nativeImage,
+  screen,
+} = require('electron');
 
 const CONFIG = require('./config');
 
 let win = null;
+let tray = null; // module scope, or it gets garbage collected and vanishes
 
 // --- remembered position ---------------------------------------------------
 
@@ -64,10 +74,20 @@ function createWindow() {
   win = new BrowserWindow({
     ...computeBounds(),
     ...(loadSavedPosition() || {}), // where you last dragged it wins
+    // NSPanel with the non-activating mask. Without this, clicking anywhere on
+    // the window activates the app and Keynote loses keyboard focus — arrow
+    // keys stop advancing slides. focusable: false only stops the *window*
+    // becoming key; it doesn't stop the *app* being activated by a click.
+    type: 'panel',
     transparent: true,
     backgroundColor: '#00000000',
     frame: false,
     hasShadow: false, // shadows on transparent macOS windows artifact badly
+    // Shown later with showInactive(). The default (show: true) calls
+    // makeKeyAndOrderFront, which activates the app and pulls focus off
+    // whatever you were presenting — LSUIElement stops the Dock icon, not the
+    // activation.
+    show: false,
     resizable: false,
     movable: true, // we reposition it ourselves via setPosition
     minimizable: false,
@@ -91,6 +111,13 @@ function createWindow() {
   // the renderer so it can tell us when the cursor is over an actual button.
   win.setIgnoreMouseEvents(true, { forward: true });
 
+  // showInactive() puts it on screen without making it key or activating the
+  // app, so the frontmost app keeps focus.
+  win.once('ready-to-show', () => {
+    win.showInactive();
+    refreshTrayMenu();
+  });
+
   win.loadFile('index.html');
   win.on('closed', () => {
     win = null;
@@ -103,6 +130,72 @@ ipcMain.on('set-interactive', (_event, interactive) => {
   if (interactive) win.setIgnoreMouseEvents(false);
   else win.setIgnoreMouseEvents(true, { forward: true });
 });
+
+// --- menu bar ---------------------------------------------------------------
+
+function setWidgetVisible(visible) {
+  if (!win || win.isDestroyed()) return;
+  // showInactive, never show — the latter would activate the app and take
+  // keyboard focus off the slides.
+  if (visible) win.showInactive();
+  else win.hide();
+  refreshTrayMenu();
+}
+
+function refreshTrayMenu() {
+  if (!tray) return;
+  const visible = !!win && !win.isDestroyed() && win.isVisible();
+
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      {
+        label: 'Show widget',
+        type: 'checkbox',
+        checked: visible,
+        click: () => setWidgetVisible(!visible),
+      },
+      { type: 'separator' },
+      // The accelerator is spelled into the label rather than set as one: a
+      // real accelerator here could collide with the global shortcut.
+      { label: `Quit  (${CONFIG.HOTKEYS.quit})`, click: () => app.quit() },
+    ])
+  );
+}
+
+function trayIcon() {
+  try {
+    // Read through fs so this works identically inside app.asar.
+    const buffer = fs.readFileSync(path.join(__dirname, 'animation-frames', CONFIG.TRAY_FRAME));
+
+    // Resized to 32px and tagged scaleFactor 2, so a Retina menu bar gets real
+    // pixels rather than a 16px bitmap upscaled to mush.
+    const scaled = nativeImage.createFromBuffer(buffer).resize({ height: 32, quality: 'best' });
+    const { width, height } = scaled.getSize();
+    const bitmap = scaled.toBitmap(); // BGRA
+
+    // Squeezing painted art down from 1004px leaves nearly every pixel only
+    // partially opaque, and a template image draws purely from alpha — so it
+    // rendered as a faint smudge. Push the partials towards solid.
+    for (let i = 3; i < bitmap.length; i += 4) {
+      if (bitmap[i] > 0) bitmap[i] = Math.min(255, Math.round(bitmap[i] * 2.2));
+    }
+
+    const icon = nativeImage.createFromBitmap(bitmap, { width, height, scaleFactor: 2 });
+    // Template images use only the alpha channel, so the painted colour is
+    // ignored and the silhouette adapts to light and dark menu bars.
+    icon.setTemplateImage(true);
+    return icon;
+  } catch (error) {
+    console.warn('Could not build tray icon:', error.message);
+    return nativeImage.createEmpty();
+  }
+}
+
+function createTray() {
+  tray = new Tray(trayIcon());
+  tray.setToolTip('Name Picker');
+  refreshTrayMenu();
+}
 
 // --- drag to reposition ----------------------------------------------------
 // Driven from here rather than with -webkit-app-region: drag, which doesn't
@@ -157,7 +250,10 @@ ipcMain.on('drag-start', () => {
 ipcMain.on('drag-end', stopDrag);
 
 function send(action) {
-  if (win && !win.isDestroyed()) win.webContents.send('hotkey', action);
+  if (!win || win.isDestroyed()) return;
+  // Rolling while hidden would be a dead hotkey — bring it back first.
+  if (action === 'roll' && !win.isVisible()) setWidgetVisible(true);
+  win.webContents.send('hotkey', action);
 }
 
 function registerHotkeys() {
@@ -178,6 +274,7 @@ function registerHotkeys() {
 app.whenReady().then(() => {
   app.dock.hide(); // no Dock icon, no menu bar takeover
   createWindow();
+  createTray();
   registerHotkeys();
 
   console.log(`ux-hub-dice ready — ${CONFIG.HOTKEYS.roll} to pick, ` +

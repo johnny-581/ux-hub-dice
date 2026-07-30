@@ -5,9 +5,34 @@
   "description": "Floating hand-drawn random name picker that survives fullscreen presentations",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "dist": "electron-builder --mac --arm64",
+    "dist:fast": "electron-builder --mac --arm64 --dir"
+  },
+  "build": {
+    "appId": "com.johnnydong.uxhubdice",
+    "productName": "Name Picker",
+    "files": [
+      "main.js",
+      "preload.js",
+      "config.js",
+      "shapes.js",
+      "app.js",
+      "index.html",
+      "styles.css",
+      "animation-frames/**/*"
+    ],
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.productivity",
+      "extendInfo": {
+        "LSUIElement": 1
+      },
+      "identity": null
+    }
   },
   "devDependencies": {
-    "electron": "^43.2.0"
+    "electron": "^43.2.0",
+    "electron-builder": "^26.15.3"
   }
 }

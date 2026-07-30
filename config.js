@@ -42,6 +42,10 @@ const CONFIG = {
     holdAfterSettleMs: 150, // beat before the shape starts leaving
   },
 
+  // Which frame becomes the menu bar icon. Drawn as a template image, so only
+  // its silhouette is used and it adapts to a light or dark menu bar.
+  TRAY_FRAME: "Untitled_Artwork-5.png",
+
   INK: "#1a1a1a",
 };
 
