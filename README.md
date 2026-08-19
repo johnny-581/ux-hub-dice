@@ -3,10 +3,25 @@
 A floating hand-drawn random name picker that stays visible above a fullscreen
 presentation on macOS.
 
+## Install
+
+1. Open the `.dmg` and drag **Name Picker** into Applications.
+2. Run this once — the app is unsigned, so macOS quarantines it on download:
+
+   ```bash
+   xattr -dr com.apple.quarantine "/Applications/Name Picker.app"
+   ```
+
+3. Open it from Applications. There's no Dock icon: look for the orange **X**
+   in the menu bar, and the widget in the corner of the screen.
+
+Skipping step 2 gets you "damaged and can't be opened" — that's Gatekeeper's
+wording for *unsigned*, not actually broken. See [Sharing it](#sharing-it).
+
 ## Use
 
-There's no Dock icon — intentional (`LSUIElement`), so the app can never become
-frontmost and steal focus from your slides. It lives in the menu bar instead.
+The missing Dock icon is deliberate (`LSUIElement`): it means the app can never
+become frontmost and steal focus from your slides.
 
 | | |
 |---|---|
@@ -107,21 +122,17 @@ across the two.
 
 ## Sharing it
 
-The app is **ad-hoc signed, not notarized** — deliberately, because notarizing
-means the $99/year Apple Developer Program. It runs fine, but macOS won't open
-a downloaded copy on the first try.
-
-Send someone the `.dmg` from `dist/`, and have them drag it to Applications and
-run this once:
-
 ```bash
-xattr -dr com.apple.quarantine "/Applications/Name Picker.app"
+npm run dist
 ```
 
-That clears the download quarantine flag and it opens normally from then on.
-Without it they'll get "damaged and can't be opened", which is Gatekeeper being
-unhelpfully worded about *unsigned*, not actually broken. The GUI equivalent is
-System Settings → Privacy & Security → **Open Anyway**.
+Send them `dist/Name Picker-<version>-universal.dmg` and the three
+[Install](#install) steps. That's the whole process.
+
+The app is **ad-hoc signed, not notarized** — deliberately, since notarizing
+means the $99/year Apple Developer Program. The only cost is step 2: one command
+to clear the quarantine flag, or System Settings → Privacy & Security →
+**Open Anyway** for anyone who'd rather not touch a terminal.
 
 Two things worth saying when you send it:
 
