@@ -5,7 +5,8 @@
 
 const CONFIG = {
   // Who's in the draw. Order doesn't matter — it gets shuffled.
-  NAMES: ["Johnny", "Bernard", "Talia", "Jefferson"],
+  // NAMES: ["Johnny", "Bernard", "Talia", "Jefferson", "Sukhraj"],
+  NAMES: ["Johnny", "Jefferson", "Bernard", "Talia", "Sukhraj"],
 
   // Invisible window that holds the ink. Bigger than the art so the bloom and
   // the overshoot bounce have room; you never see its edges.
@@ -41,6 +42,13 @@ const CONFIG = {
     settleMs: 260, // overshoot bounce on the final shape
     holdAfterSettleMs: 150, // beat before the shape starts leaving
   },
+
+  // Which mouse button opens the widget's own menu (pick / hide / quit).
+  // "right" is the macOS convention and also covers Control-click. Set it to
+  // "left" to put the menu on a plain click — but note a left click is also
+  // how you roll, so the menu takes that over (its first item still rolls).
+  // Right-click opens the menu either way.
+  CONTEXT_MENU_BUTTON: "right",
 
   // Which frame becomes the menu bar icon. Drawn as a template image, so only
   // its silhouette is used and it adapts to a light or dark menu bar.

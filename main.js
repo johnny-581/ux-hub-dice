@@ -12,8 +12,10 @@ const {
 } = require('electron');
 
 const CONFIG = require('./config');
+const roster = require('./roster');
 
 let win = null;
+let rosterWin = null;
 let tray = null; // module scope, or it gets garbage collected and vanishes
 
 // --- remembered position ---------------------------------------------------
@@ -115,7 +117,7 @@ function createWindow() {
   // app, so the frontmost app keeps focus.
   win.once('ready-to-show', () => {
     win.showInactive();
-    refreshTrayMenu();
+    syncMenus();
   });
 
   win.loadFile('index.html');
@@ -131,6 +133,133 @@ ipcMain.on('set-interactive', (_event, interactive) => {
   else win.setIgnoreMouseEvents(true, { forward: true });
 });
 
+// --- the menu ---------------------------------------------------------------
+// One menu, shown in two places: the menu bar icon and the widget's own
+// right-click. Only the show/hide item differs, so there's nothing to learn
+// about which one you opened.
+
+function buildMenu({ forTray }) {
+  const entries = roster.list();
+  const checkedCount = entries.filter((entry) => entry.enabled).length;
+  const visible = !!win && !win.isDestroyed() && win.isVisible();
+
+  const names = entries.map((entry) => ({
+    label: entry.name,
+    type: 'checkbox',
+    checked: entry.enabled,
+    // The last checked name can't be unchecked — something has to be pickable.
+    enabled: !(entry.enabled && checkedCount === 1),
+    click: () => {
+      roster.toggle(entry.name);
+      syncMenus();
+    },
+  }));
+
+  return Menu.buildFromTemplate([
+    // Accelerators are spelled into the labels rather than set as real ones: a
+    // real accelerator here could collide with the global shortcut.
+    { label: `Pick a name  (${CONFIG.HOTKEYS.roll})`, click: () => send('roll') },
+    { type: 'separator' },
+    ...names,
+    { type: 'separator' },
+    { label: 'Edit names…', click: openRosterWindow },
+    { type: 'separator' },
+    forTray
+      ? {
+          label: 'Show widget',
+          type: 'checkbox',
+          checked: visible,
+          click: () => setWidgetVisible(!visible),
+        }
+      : { label: 'Hide widget', click: () => setWidgetVisible(false) },
+    { label: `Quit  (${CONFIG.HOTKEYS.quit})`, click: () => app.quit() },
+  ]);
+}
+
+// The widget's menu is built fresh on every right-click, but the tray holds on
+// to whatever menu it was last given — so that one has to be replaced by hand
+// after anything that changes it, or it silently goes stale.
+function syncMenus() {
+  if (tray) tray.setContextMenu(buildMenu({ forTray: true }));
+  if (win && !win.isDestroyed()) win.webContents.send('roster', roster.activeNames());
+  if (rosterWin && !rosterWin.isDestroyed()) rosterWin.webContents.send('roster', roster.list());
+}
+
+// Right-click (or Control-click) on live ink. The renderer only sees the event
+// at all when the window is currently accepting mouse events, so this can't
+// fire from a click that was meant for the slides underneath.
+ipcMain.on('show-context-menu', () => {
+  if (!win || win.isDestroyed()) return;
+
+  // NSMenu runs its own event-tracking loop, so the renderer gets no mouseup
+  // and no mouseleave while it's open — tell it once the menu goes away, or it
+  // would leave the window swallowing clicks over the slides.
+  buildMenu({ forTray: false }).popup({
+    window: win,
+    callback: () => {
+      if (win && !win.isDestroyed()) win.webContents.send('menu-closed');
+    },
+  });
+});
+
+// --- the names editor -------------------------------------------------------
+
+function openRosterWindow() {
+  if (rosterWin && !rosterWin.isDestroyed()) {
+    rosterWin.show();
+    rosterWin.focus();
+    app.focus({ steal: true });
+    return;
+  }
+
+  // An ordinary window, unlike the widget: none of the non-activating panel
+  // setup applies, because this one has to become key so you can type in it.
+  rosterWin = new BrowserWindow({
+    width: 340,
+    height: 470,
+    title: 'Names',
+    show: false,
+    resizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'roster-preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  rosterWin.loadFile('roster.html');
+
+  rosterWin.once('ready-to-show', () => {
+    rosterWin.show();
+    // Showing a window doesn't activate an LSUIElement app, so without this the
+    // editor appears but the keyboard still belongs to whatever was frontmost.
+    app.focus({ steal: true });
+  });
+
+  rosterWin.on('closed', () => {
+    rosterWin = null;
+  });
+}
+
+ipcMain.handle('roster:get', () => roster.list());
+ipcMain.handle('roster:active', () => roster.activeNames());
+
+ipcMain.handle('roster:add', (_event, name) => {
+  const result = roster.add(name);
+  if (result === 'ok') syncMenus();
+  return result;
+});
+
+ipcMain.on('roster:remove', (_event, name) => {
+  if (roster.remove(name)) syncMenus();
+});
+
+ipcMain.on('roster:toggle', (_event, name) => {
+  if (roster.toggle(name)) syncMenus();
+});
+
 // --- menu bar ---------------------------------------------------------------
 
 function setWidgetVisible(visible) {
@@ -139,27 +268,7 @@ function setWidgetVisible(visible) {
   // keyboard focus off the slides.
   if (visible) win.showInactive();
   else win.hide();
-  refreshTrayMenu();
-}
-
-function refreshTrayMenu() {
-  if (!tray) return;
-  const visible = !!win && !win.isDestroyed() && win.isVisible();
-
-  tray.setContextMenu(
-    Menu.buildFromTemplate([
-      {
-        label: 'Show widget',
-        type: 'checkbox',
-        checked: visible,
-        click: () => setWidgetVisible(!visible),
-      },
-      { type: 'separator' },
-      // The accelerator is spelled into the label rather than set as one: a
-      // real accelerator here could collide with the global shortcut.
-      { label: `Quit  (${CONFIG.HOTKEYS.quit})`, click: () => app.quit() },
-    ])
-  );
+  syncMenus();
 }
 
 function trayIcon() {
@@ -194,7 +303,7 @@ function trayIcon() {
 function createTray() {
   tray = new Tray(trayIcon());
   tray.setToolTip('Name Picker');
-  refreshTrayMenu();
+  syncMenus();
 }
 
 // --- drag to reposition ----------------------------------------------------

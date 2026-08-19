@@ -2,7 +2,7 @@
 // scripts loaded before this one.
 
 (() => {
-  const { TIMING, NAMES } = CONFIG;
+  const { TIMING } = CONFIG;
   const HOLDS = TIMING.holds;
 
   const body = document.body;
@@ -22,8 +22,18 @@
   // Shuffle bag, not random choice: nobody comes up twice before everyone has
   // come up once. For picking people that matters more than true randomness.
 
+  // Fed from main, not from CONFIG: the roster is editable at runtime, so the
+  // list here has to be able to change under us.
+  let names = [];
   let bag = [];
   let lastPicked = null;
+
+  function setNames(next) {
+    names = Array.isArray(next) ? next : [];
+    // Whatever is left in the bag may name someone just deleted or unchecked,
+    // so it can't survive a roster change.
+    bag = [];
+  }
 
   function shuffled(list) {
     const a = list.slice();
@@ -35,11 +45,13 @@
   }
 
   function drawName() {
-    if (!NAMES.length) return 'add names to config.js';
-    if (NAMES.length === 1) return NAMES[0];
+    // The store won't let you empty the roster, so this is only reachable if
+    // names.json is unreadable and CONFIG.NAMES is empty too.
+    if (!names.length) return 'no names yet';
+    if (names.length === 1) return names[0];
 
     if (!bag.length) {
-      bag = shuffled(NAMES);
+      bag = shuffled(names);
       // A fresh bag can otherwise repeat whoever was picked last.
       if (bag[bag.length - 1] === lastPicked) {
         const j = Math.floor(Math.random() * (bag.length - 1));
@@ -146,6 +158,36 @@
     evaluateInteractive();
   });
 
+  // --- native menu ---------------------------------------------------------
+  // Built and popped in main; the renderer only says when. Right-click and
+  // Control-click both arrive as `contextmenu`, and either can reach us only
+  // while the window is accepting clicks — i.e. over live ink.
+
+  const MENU_ON_LEFT = CONFIG.CONTEXT_MENU_BUTTON === 'left';
+
+  function openMenu() {
+    // A press that ends in a menu isn't a drag or a pick.
+    if (press && press.dragging) window.widget.dragEnd();
+    press = null;
+    body.classList.remove('dragging');
+    window.widget.showMenu();
+  }
+
+  window.addEventListener('contextmenu', (event) => {
+    event.preventDefault();
+    openMenu();
+  });
+
+  // No mouseup or mouseleave arrives while the menu is tracking, so reset by
+  // hand — otherwise the window stays clickable and puts a dead zone over the
+  // slides. Mousemove is still forwarded, so it goes live again on its own.
+  window.widget.onMenuClosed(() => {
+    press = null;
+    body.classList.remove('dragging');
+    mouse = { x: -1, y: -1 };
+    evaluateInteractive();
+  });
+
   // --- state --------------------------------------------------------------
 
   function setState(next) {
@@ -242,11 +284,18 @@
 
   function activate() {
     if (justDragged) return; // that press was a reposition, not a pick
-    roll();
+    if (MENU_ON_LEFT) openMenu();
+    else roll();
   }
 
   pickBtn.addEventListener('click', activate);
   nameEl.addEventListener('click', activate);
+
+  window.widget.onRoster(setNames);
+
+  // Asked for rather than waited for, so a hotkey pressed the instant the
+  // widget appears can't find an empty list.
+  window.widget.getNames().then(setNames);
 
   window.widget.onHotkey((action) => {
     if (action === 'roll') roll();

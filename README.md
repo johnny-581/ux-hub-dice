@@ -6,8 +6,7 @@ presentation on macOS.
 ## Use
 
 There's no Dock icon — intentional (`LSUIElement`), so the app can never become
-frontmost and steal focus from your slides. It lives in the menu bar instead,
-where you can toggle the widget's visibility or quit.
+frontmost and steal focus from your slides. It lives in the menu bar instead.
 
 | | |
 |---|---|
@@ -18,6 +17,35 @@ where you can toggle the widget's visibility or quit.
 Click **pick** to roll, click the name to re-roll, and drag any visible ink to
 move the widget. Position is remembered between launches. Everywhere else on
 screen stays click-through, so your slides still get their clicks.
+
+## The menu
+
+One menu, reachable two ways: click the menu bar icon, or right-click (or
+Control-click) the widget itself. They're identical apart from show vs. hide.
+
+```
+Pick a name  (⌥D)
+──────────────
+✓ Johnny          ← only checked names get picked
+✓ Jefferson
+  Bernard
+──────────────
+Edit names…
+──────────────
+Hide widget       ← "Show widget" in the menu bar version
+Quit  (⌥⇧Q)
+```
+
+Clicking a name checks or unchecks it. macOS closes a menu on every click, so
+that's best for flipping one person — **Edit names…** opens a small window for
+adding, deleting, and toggling several at once.
+
+The last checked name can't be unchecked and the last remaining name can't be
+deleted: something always has to be pickable.
+
+Set `CONTEXT_MENU_BUTTON: "left"` in `config.js` to move the widget's menu onto
+a plain left click instead — rolling then lives in the menu's first item and on
+`⌥D`.
 
 Escape is deliberately not bound — it would be stolen from Keynote, where it
 exits the slideshow. Rolling while the widget is hidden un-hides it first.
@@ -34,11 +62,16 @@ it's running, or the second instance won't get the hotkeys.
 
 ## Configure
 
-Everything routine lives in [`config.js`](config.js): `NAMES`, starting
-`POSITION`, `HOTKEYS`, animation `TIMING`, and `DRAG_OVERHANG` (how far off a
-screen edge it can be dragged).
+Everything routine lives in [`config.js`](config.js): starting `POSITION`,
+`HOTKEYS`, animation `TIMING`, `DRAG_OVERHANG` (how far off a screen edge it can
+be dragged), and `CONTEXT_MENU_BUTTON`.
+
+`NAMES` there is only the **first-run seed**. Once the app has started, the
+roster lives in `names.json` under the app's userData and is edited from the
+menu — so changing who's in the draw never needs a rebuild.
 
 Names are drawn from a shuffle bag — nobody repeats until everyone has come up.
+Editing the roster resets the bag.
 
 ## Frames
 
@@ -65,5 +98,6 @@ Built arm64-only and ad-hoc signed — fine locally, but unsigned for anyone els
 who'd hit Gatekeeper. Handing it to other people means a Developer ID
 certificate and notarization.
 
-Note `config.js` is sealed inside the app bundle, so changing names means a
-rebuild. Use `npm start` while you're iterating.
+Note `config.js` is sealed inside the app bundle, so changing anything in *it*
+means a rebuild — but names aren't in it after first run, so the roster is
+editable in the installed app.

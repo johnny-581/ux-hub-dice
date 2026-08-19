@@ -20,6 +20,11 @@
       "app.js",
       "index.html",
       "styles.css",
+      "roster.js",
+      "roster-preload.js",
+      "roster-renderer.js",
+      "roster.html",
+      "roster.css",
       "animation-frames/**/*"
     ],
     "mac": {

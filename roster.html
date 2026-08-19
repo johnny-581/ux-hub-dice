@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline';"
+    />
+    <title>Names</title>
+    <link rel="stylesheet" href="roster.css" />
+  </head>
+  <body>
+    <!-- No heading: the title bar already says "Names". -->
+    <p class="hint">Only checked names get picked.</p>
+
+    <ul id="list"></ul>
+
+    <form id="add" autocomplete="off">
+      <input id="input" type="text" placeholder="Add a name" maxlength="40" />
+      <button type="submit">Add</button>
+    </form>
+    <p id="note" class="note" role="status"></p>
+
+    <script src="roster-renderer.js"></script>
+  </body>
+</html>
