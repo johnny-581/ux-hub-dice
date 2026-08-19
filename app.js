@@ -19,47 +19,46 @@
   let winner = '';
 
   // --- name selection ----------------------------------------------------
-  // Shuffle bag, not random choice: nobody comes up twice before everyone has
-  // come up once. For picking people that matters more than true randomness.
+  // Nobody comes up twice before everyone has come up once. For picking people
+  // that matters more than true randomness.
+  //
+  // What's remembered is who has *already* come up this round, rather than a
+  // pre-shuffled queue of who's left. The two are equivalent while the roster
+  // holds still, but this one survives it changing: main re-sends the roster on
+  // every menu sync — including hide/show, and including pushes where nothing
+  // actually changed — and a queue had to be thrown away each time, which
+  // quietly started the round over and handed someone a second turn early.
 
   // Fed from main, not from CONFIG: the roster is editable at runtime, so the
   // list here has to be able to change under us.
   let names = [];
-  let bag = [];
+  let picked = new Set();
   let lastPicked = null;
 
   function setNames(next) {
     names = Array.isArray(next) ? next : [];
-    // Whatever is left in the bag may name someone just deleted or unchecked,
-    // so it can't survive a roster change.
-    bag = [];
-  }
-
-  function shuffled(list) {
-    const a = list.slice();
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
+    // `picked` deliberately survives: unchecking someone, or just opening the
+    // menu, shouldn't give the people already drawn a fresh turn. Anyone added
+    // or re-checked isn't in it, so they're eligible straight away.
   }
 
   function drawName() {
     // The store won't let you empty the roster, so this is only reachable if
     // names.json is unreadable and CONFIG.NAMES is empty too.
     if (!names.length) return 'no names yet';
-    if (names.length === 1) return names[0];
 
-    if (!bag.length) {
-      bag = shuffled(names);
-      // A fresh bag can otherwise repeat whoever was picked last.
-      if (bag[bag.length - 1] === lastPicked) {
-        const j = Math.floor(Math.random() * (bag.length - 1));
-        [bag[bag.length - 1], bag[j]] = [bag[j], bag[bag.length - 1]];
-      }
+    let eligible = names.filter((name) => !picked.has(name));
+
+    if (!eligible.length) {
+      // Everyone has had a turn — start the next round.
+      picked.clear();
+      eligible = names.slice();
+      // Don't open a round with whoever closed the last one.
+      if (eligible.length > 1) eligible = eligible.filter((name) => name !== lastPicked);
     }
 
-    lastPicked = bag.pop();
+    lastPicked = eligible[Math.floor(Math.random() * eligible.length)];
+    picked.add(lastPicked);
     return lastPicked;
   }
 

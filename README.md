@@ -89,8 +89,9 @@ be dragged), and `CONTEXT_MENU_BUTTON`.
 roster lives in `names.json` under the app's userData and is edited from the
 menu — so changing who's in the draw never needs a rebuild.
 
-Names are drawn from a shuffle bag — nobody repeats until everyone has come up.
-Editing the roster resets the bag.
+Nobody repeats until everyone has come up. Editing the roster doesn't restart
+that — unchecking someone mid-round leaves everyone else's turn intact, and a
+name you add or re-check becomes eligible immediately.
 
 ## Frames
 
