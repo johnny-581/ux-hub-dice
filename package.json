@@ -6,7 +6,7 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --mac --arm64",
+    "dist": "electron-builder --mac --universal",
     "dist:fast": "electron-builder --mac --arm64 --dir"
   },
   "build": {
@@ -33,6 +33,7 @@
       "extendInfo": {
         "LSUIElement": 1
       },
+      "icon": "assets/icon.png",
       "identity": null
     }
   },

@@ -84,20 +84,51 @@ bounding boxes or the flipbook will jitter.
 ## Rebuild
 
 ```bash
-npm run dist:fast   # just the .app, quick
-npm run dist        # full .dmg
+npm run dist:fast   # just the .app, arm64 only — for iterating locally
+npm run dist        # universal .dmg — what you hand to other people
 ```
 
 Then install:
 
 ```bash
-cp -R "dist/mac-arm64/Name Picker.app" /Applications/
+cp -R "dist/mac-universal/Name Picker.app" /Applications/
 ```
 
-Built arm64-only and ad-hoc signed — fine locally, but unsigned for anyone else,
-who'd hit Gatekeeper. Handing it to other people means a Developer ID
-certificate and notarization.
+`npm run dist` builds universal (Apple Silicon *and* Intel), which is why it's
+slower — it packages Electron twice and merges the two. The app icon is
+[`assets/icon.png`](assets/icon.png), the terracotta X from the flipbook,
+cropped out of its 1004×790 frame and centred on a square.
 
-Note `config.js` is sealed inside the app bundle, so changing anything in *it*
-means a rebuild — but names aren't in it after first run, so the roster is
-editable in the installed app.
+`config.js` is sealed inside the app bundle, so changing anything in *it* means
+a rebuild — but the roster isn't in it after first run, so names stay editable
+in the installed app. Both `npm start` and the installed app read the same
+`~/Library/Application Support/ux-hub-dice/`, so your roster and position carry
+across the two.
+
+## Sharing it
+
+The app is **ad-hoc signed, not notarized** — deliberately, because notarizing
+means the $99/year Apple Developer Program. It runs fine, but macOS won't open
+a downloaded copy on the first try.
+
+Send someone the `.dmg` from `dist/`, and have them drag it to Applications and
+run this once:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Name Picker.app"
+```
+
+That clears the download quarantine flag and it opens normally from then on.
+Without it they'll get "damaged and can't be opened", which is Gatekeeper being
+unhelpfully worded about *unsigned*, not actually broken. The GUI equivalent is
+System Settings → Privacy & Security → **Open Anyway**.
+
+Two things worth saying when you send it:
+
+- The hotkeys are registered system-wide, so they silently do nothing if
+  something else on their Mac already owns `⌥D`. The menu bar icon still works.
+- It ships seeded with our names — they can swap them out under **Edit names…**.
+
+If it ever spreads past people who know you, that's the point to pay for a
+Developer ID certificate and set `hardenedRuntime: true` plus `notarize` in
+`package.json`, so it just opens.
