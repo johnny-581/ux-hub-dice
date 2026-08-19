@@ -159,6 +159,7 @@ function buildMenu({ forTray }) {
     // Accelerators are spelled into the labels rather than set as real ones: a
     // real accelerator here could collide with the global shortcut.
     { label: `Pick a name  (${CONFIG.HOTKEYS.roll})`, click: () => send('roll') },
+    { label: `Start over  (${CONFIG.HOTKEYS.dismiss})`, click: () => send('dismiss') },
     { type: 'separator' },
     ...names,
     { type: 'separator' },

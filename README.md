@@ -40,6 +40,7 @@ Control-click) the widget itself. They're identical apart from show vs. hide.
 
 ```
 Pick a name  (⌥D)
+Start over   (⌥⇧D)
 ──────────────
 ✓ Johnny          ← only checked names get picked
 ✓ Jefferson
@@ -50,6 +51,9 @@ Edit names…
 Hide widget       ← "Show widget" in the menu bar version
 Quit  (⌥⇧Q)
 ```
+
+**Start over** clears a landed name and goes back to the **pick** state — the
+same thing `⌥⇧D` does.
 
 Clicking a name checks or unchecks it. macOS closes a menu on every click, so
 that's best for flipping one person — **Edit names…** opens a small window for
