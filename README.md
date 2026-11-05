@@ -3,6 +3,8 @@
 A floating hand-drawn random name picker that stays visible above a fullscreen
 presentation on macOS.
 
+![Name Picker writing out a name by hand, then the Names list](assets/name-picker-demo.gif)
+
 ## Install
 
 1. Open the `.dmg` and drag **Name Picker** into Applications.
